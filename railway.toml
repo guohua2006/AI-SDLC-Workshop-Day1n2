@@ -1,0 +1,9 @@
+[build]
+buildCommand = "cd todo-app && npm ci && npm run build"
+
+[deploy]
+startCommand = "cd todo-app && npm start"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+healthcheckPath = "/api/health"
+healthcheckInterval = 30

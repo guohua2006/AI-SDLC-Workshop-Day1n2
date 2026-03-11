@@ -1,0 +1,11 @@
+{
+  "name": "ai-sdlc-workshop-day1",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "cd todo-app && npm ci && npm run build",
+    "start": "cd todo-app && npm start"
+  }
+}

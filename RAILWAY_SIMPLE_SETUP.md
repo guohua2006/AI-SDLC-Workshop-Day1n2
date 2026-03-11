@@ -43,11 +43,13 @@ The Railway CLI has limitations that make GitHub Actions deployment difficult:
 
 2. **Go to "Settings" tab**
 
-3. **Set Root Directory (if needed):**
+3. **Set Root Directory (only if your service is configured to build from the app subfolder):**
    ```
    Root Directory: /todo-app
    ```
-   (Only if your Next.js app is in a subdirectory)
+   Use this if Railway is meant to build directly from `todo-app/`.
+
+   If you leave Root Directory empty, this repository now includes a root `package.json` and root `railway.toml` that forward the build to `todo-app/` automatically.
 
 4. **Environment Variables (if needed):**
    - Go to "Variables" tab
