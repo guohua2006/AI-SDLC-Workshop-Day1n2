@@ -38,7 +38,7 @@ function normalizeUsername(username: string): string {
 }
 
 function hashSessionToken(token: string): string {
-  const secret = process.env.SESSION_SECRET;
+  const secret = process.env.SESSION_SECRET ?? process.env.SESSION_KEY;
 
   if (!secret && process.env.NODE_ENV !== "development") {
     throw new Error("SESSION_SECRET environment variable is required outside local development");
