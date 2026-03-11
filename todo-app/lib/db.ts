@@ -10,6 +10,8 @@ if (!fs.existsSync(dataDir)) {
 }
 
 const db = new Database(dbPath);
+db.pragma("busy_timeout = 5000");
+db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
 
 db.exec(`
@@ -119,24 +121,29 @@ if (!todosColumns.some((column) => column.name === "last_notification_sent")) {
 
 db.exec("CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id)");
 
-const holidayRows = [
-  ["2026-01-01", "New Year's Day"],
-  ["2026-02-17", "Chinese New Year"],
-  ["2026-02-18", "Chinese New Year Holiday"],
-  ["2026-03-20", "Hari Raya Puasa"],
-  ["2026-05-01", "Labour Day"],
-  ["2026-05-27", "Vesak Day"],
-  ["2026-08-09", "National Day"],
-  ["2026-11-10", "Deepavali"],
-  ["2026-12-25", "Christmas Day"],
-] as const;
+const seedHolidays = db.transaction(() => {
+  const holidayRows = [
+    ["2026-01-01", "New Year's Day"],
+    ["2026-02-17", "Chinese New Year"],
+    ["2026-02-18", "Chinese New Year Holiday"],
+    ["2026-03-20", "Hari Raya Puasa"],
+    ["2026-05-01", "Labour Day"],
+    ["2026-05-27", "Vesak Day"],
+    ["2026-08-09", "National Day"],
+    ["2026-11-10", "Deepavali"],
+    ["2026-12-25", "Christmas Day"],
+  ] as const;
 
-const insertHoliday = db.prepare(
-  "INSERT OR IGNORE INTO holidays (id, date, name, country_code, created_at) VALUES (?, ?, ?, 'SG', ?)"
-);
+  const insertHoliday = db.prepare(
+    "INSERT OR IGNORE INTO holidays (id, date, name, country_code, created_at) VALUES (?, ?, ?, 'SG', ?)"
+  );
 
-for (const [date, name] of holidayRows) {
-  insertHoliday.run(`sg-${date}`, date, name, new Date().toISOString());
-}
+  const now = new Date().toISOString();
+  for (const [date, name] of holidayRows) {
+    insertHoliday.run(`sg-${date}`, date, name, now);
+  }
+});
+
+seedHolidays();
 
 export default db;
