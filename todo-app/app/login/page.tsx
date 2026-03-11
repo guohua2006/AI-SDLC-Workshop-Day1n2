@@ -30,8 +30,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.replace("/");
-      router.refresh();
+      window.location.assign("/");
     } catch {
       setError("Network error. Please try again.");
       setLoading(false);

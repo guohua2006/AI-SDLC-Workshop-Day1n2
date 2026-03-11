@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 
 export const SESSION_COOKIE_NAME = "todo_session";
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const DEV_SESSION_SECRET = crypto.randomBytes(32).toString("hex");
+const DEV_SESSION_SECRET = "todo-app-dev-session-secret";
 
 export type AuthUser = {
   id: string;
@@ -40,8 +40,8 @@ function normalizeUsername(username: string): string {
 function hashSessionToken(token: string): string {
   const secret = process.env.SESSION_SECRET;
 
-  if (!secret && process.env.NODE_ENV === "production") {
-    throw new Error("SESSION_SECRET environment variable is required in production");
+  if (!secret && process.env.NODE_ENV !== "development") {
+    throw new Error("SESSION_SECRET environment variable is required outside local development");
   }
 
   return crypto
