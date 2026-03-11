@@ -53,8 +53,9 @@ The Railway CLI has limitations that make GitHub Actions deployment difficult:
 
 4. **Environment Variables (if needed):**
    - Go to "Variables" tab
-   - Add any required environment variables
-   - Example: `NODE_ENV=production`
+   - Add required environment variables:
+   - `SESSION_SECRET=<a long random string>` (required for login/register in Railway)
+   - Optional: `NODE_ENV=production` (Railway usually sets this automatically)
 
 5. **Custom Domain (Optional):**
    - Go to "Settings" → "Networking"

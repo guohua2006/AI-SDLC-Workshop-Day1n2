@@ -26,17 +26,23 @@ export async function POST(request: Request) {
     );
   }
 
+  let body: unknown;
   try {
-    const body = await request.json();
-    const parsed = schema.safeParse(body);
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
 
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "Invalid input" },
-        { status: 400 }
-      );
-    }
+  const parsed = schema.safeParse(body);
 
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  try {
     const user = createUser(parsed.data.username, parsed.data.password);
     const token = createSessionForUser(user.id);
 
@@ -51,10 +57,20 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
+    if (
+      error instanceof Error &&
+      /SESSION_SECRET environment variable is required/.test(error.message)
+    ) {
+      return NextResponse.json(
+        { error: "Server misconfiguration: SESSION_SECRET is not set" },
+        { status: 500 }
+      );
+    }
+
     if (error instanceof Error && /UNIQUE constraint failed/.test(error.message)) {
       return NextResponse.json({ error: "Username already exists" }, { status: 409 });
     }
 
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    return NextResponse.json({ error: "Registration failed" }, { status: 500 });
   }
 }

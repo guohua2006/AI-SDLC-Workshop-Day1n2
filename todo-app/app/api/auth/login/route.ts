@@ -27,17 +27,23 @@ export async function POST(request: Request) {
     );
   }
 
+  let body: unknown;
   try {
-    const body = await request.json();
-    const parsed = schema.safeParse(body);
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
 
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "Invalid input" },
-        { status: 400 }
-      );
-    }
+  const parsed = schema.safeParse(body);
 
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  try {
     const user = authenticateUser(parsed.data.username, parsed.data.password);
 
     if (!user) {
@@ -57,7 +63,17 @@ export async function POST(request: Request) {
     });
 
     return response;
-  } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      /SESSION_SECRET environment variable is required/.test(error.message)
+    ) {
+      return NextResponse.json(
+        { error: "Server misconfiguration: SESSION_SECRET is not set" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ error: "Authentication failed" }, { status: 500 });
   }
 }
