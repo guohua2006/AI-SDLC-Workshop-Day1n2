@@ -4,6 +4,7 @@ import {
   toggleTodoCompletion,
   updateTodo,
 } from "@/lib/todos-repo";
+import { getAuthUserFromRequest } from "@/lib/auth";
 import { updateTodoSchema } from "@/lib/validation";
 import { NextResponse } from "next/server";
 
@@ -19,13 +20,19 @@ function isValidTodoId(id: string): boolean {
 }
 
 export async function GET(_: Request, { params }: Params) {
+  const authUser = getAuthUserFromRequest(_);
+
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = await params;
 
   if (!isValidTodoId(id)) {
     return NextResponse.json({ error: "Invalid todo ID" }, { status: 400 });
   }
 
-  const todo = getTodoById(id);
+  const todo = getTodoById(authUser.id, id);
 
   if (!todo) {
     return NextResponse.json({ error: "Todo not found" }, { status: 404 });
@@ -35,6 +42,12 @@ export async function GET(_: Request, { params }: Params) {
 }
 
 export async function PUT(request: Request, { params }: Params) {
+  const authUser = getAuthUserFromRequest(request);
+
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = await params;
 
   if (!isValidTodoId(id)) {
@@ -52,7 +65,7 @@ export async function PUT(request: Request, { params }: Params) {
       );
     }
 
-    const existing = getTodoById(id);
+    const existing = getTodoById(authUser.id, id);
 
     if (!existing) {
       return NextResponse.json({ error: "Todo not found" }, { status: 404 });
@@ -73,7 +86,7 @@ export async function PUT(request: Request, { params }: Params) {
       );
     }
 
-    const updated = updateTodo(id, parsed.data);
+    const updated = updateTodo(authUser.id, id, parsed.data);
 
     if (!updated) {
       return NextResponse.json({ error: "Todo not found" }, { status: 404 });
@@ -86,13 +99,19 @@ export async function PUT(request: Request, { params }: Params) {
 }
 
 export async function PATCH(_: Request, { params }: Params) {
+  const authUser = getAuthUserFromRequest(_);
+
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = await params;
 
   if (!isValidTodoId(id)) {
     return NextResponse.json({ error: "Invalid todo ID" }, { status: 400 });
   }
 
-  const result = toggleTodoCompletion(id);
+  const result = toggleTodoCompletion(authUser.id, id);
 
   if (!result) {
     return NextResponse.json({ error: "Todo not found" }, { status: 404 });
@@ -102,13 +121,19 @@ export async function PATCH(_: Request, { params }: Params) {
 }
 
 export async function DELETE(_: Request, { params }: Params) {
+  const authUser = getAuthUserFromRequest(_);
+
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = await params;
 
   if (!isValidTodoId(id)) {
     return NextResponse.json({ error: "Invalid todo ID" }, { status: 400 });
   }
 
-  const deleted = deleteTodo(id);
+  const deleted = deleteTodo(authUser.id, id);
 
   if (!deleted) {
     return NextResponse.json({ error: "Todo not found" }, { status: 404 });

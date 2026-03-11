@@ -9,6 +9,7 @@ import type {
 
 type TodoRow = {
   id: string;
+  user_id: string;
   title: string;
   completed: number;
   priority: Priority;
@@ -43,11 +44,13 @@ function prioritySortValue(priority: Priority): number {
   return 1;
 }
 
-export function listTodos(priority?: Priority): Todo[] {
-  const whereClause = priority ? "WHERE priority = ?" : "";
+export function listTodos(userId: string, priority?: Priority): Todo[] {
+  const whereClause = priority
+    ? "WHERE user_id = ? AND priority = ?"
+    : "WHERE user_id = ?";
   const rows = db
     .prepare(`SELECT * FROM todos ${whereClause}`)
-    .all(...(priority ? [priority] : [])) as TodoRow[];
+    .all(...(priority ? [userId, priority] : [userId])) as TodoRow[];
 
   return rows
     .map(mapRow)
@@ -63,24 +66,25 @@ export function listTodos(priority?: Priority): Todo[] {
     });
 }
 
-export function getTodoById(id: string): Todo | null {
-  const row = db.prepare("SELECT * FROM todos WHERE id = ?").get(id) as
+export function getTodoById(userId: string, id: string): Todo | null {
+  const row = db.prepare("SELECT * FROM todos WHERE user_id = ? AND id = ?").get(userId, id) as
     | TodoRow
     | undefined;
 
   return row ? mapRow(row) : null;
 }
 
-export function createTodo(input: CreateTodoInput): Todo {
+export function createTodo(userId: string, input: CreateTodoInput): Todo {
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
 
   db.prepare(
     `INSERT INTO todos (
-      id, title, completed, priority, due_date, recurrence_pattern, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      id, user_id, title, completed, priority, due_date, recurrence_pattern, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
+    userId,
     input.title,
     0,
     input.priority ?? "medium",
@@ -90,7 +94,7 @@ export function createTodo(input: CreateTodoInput): Todo {
     now
   );
 
-  const created = getTodoById(id);
+  const created = getTodoById(userId, id);
 
   if (!created) {
     throw new Error("Failed to create todo");
@@ -99,8 +103,8 @@ export function createTodo(input: CreateTodoInput): Todo {
   return created;
 }
 
-export function updateTodo(id: string, input: UpdateTodoInput): Todo | null {
-  const existing = getTodoById(id);
+export function updateTodo(userId: string, id: string, input: UpdateTodoInput): Todo | null {
+  const existing = getTodoById(userId, id);
 
   if (!existing) {
     return null;
@@ -116,7 +120,7 @@ export function updateTodo(id: string, input: UpdateTodoInput): Todo | null {
          due_date = ?,
          recurrence_pattern = ?,
          updated_at = ?
-     WHERE id = ?`
+      WHERE user_id = ? AND id = ?`
   ).run(
     input.title ?? existing.title,
     input.completed === undefined ? Number(existing.completed) : Number(input.completed),
@@ -126,20 +130,21 @@ export function updateTodo(id: string, input: UpdateTodoInput): Todo | null {
       ? existing.recurrencePattern
       : input.recurrencePattern,
     now,
+    userId,
     id
   );
 
-  return getTodoById(id);
+  return getTodoById(userId, id);
 }
 
-export function deleteTodo(id: string): boolean {
-  const result = db.prepare("DELETE FROM todos WHERE id = ?").run(id);
+export function deleteTodo(userId: string, id: string): boolean {
+  const result = db.prepare("DELETE FROM todos WHERE user_id = ? AND id = ?").run(userId, id);
   return result.changes > 0;
 }
 
-export function toggleTodoCompletion(id: string): { current: Todo; spawned: Todo | null } | null {
-  const runToggle = db.transaction((todoId: string) => {
-    const existing = getTodoById(todoId);
+export function toggleTodoCompletion(userId: string, id: string): { current: Todo; spawned: Todo | null } | null {
+  const runToggle = db.transaction((ownerId: string, todoId: string) => {
+    const existing = getTodoById(ownerId, todoId);
 
     if (!existing) {
       return null;
@@ -148,13 +153,14 @@ export function toggleTodoCompletion(id: string): { current: Todo; spawned: Todo
     const nextCompletedState = !existing.completed;
     const now = new Date().toISOString();
 
-    db.prepare("UPDATE todos SET completed = ?, updated_at = ? WHERE id = ?").run(
+    db.prepare("UPDATE todos SET completed = ?, updated_at = ? WHERE user_id = ? AND id = ?").run(
       Number(nextCompletedState),
       now,
+      ownerId,
       todoId
     );
 
-    const updated = getTodoById(todoId);
+    const updated = getTodoById(ownerId, todoId);
 
     if (!updated) {
       return null;
@@ -166,7 +172,7 @@ export function toggleTodoCompletion(id: string): { current: Todo; spawned: Todo
 
     const nextDueDate = calculateNextDueDate(updated.dueDate, updated.recurrencePattern);
 
-    const spawned = createTodo({
+    const spawned = createTodo(ownerId, {
       title: updated.title,
       priority: updated.priority,
       dueDate: nextDueDate,
@@ -176,5 +182,5 @@ export function toggleTodoCompletion(id: string): { current: Todo; spawned: Todo
     return { current: updated, spawned };
   });
 
-  return runToggle(id);
+  return runToggle(userId, id);
 }

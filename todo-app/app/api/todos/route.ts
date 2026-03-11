@@ -2,11 +2,18 @@ import {
   createTodo,
   listTodos,
 } from "@/lib/todos-repo";
+import { getAuthUserFromRequest } from "@/lib/auth";
 import type { Priority } from "@/lib/types";
 import { createTodoSchema } from "@/lib/validation";
 import { NextResponse } from "next/server";
 
 export function GET(request: Request) {
+  const authUser = getAuthUserFromRequest(request);
+
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const rawPriority = searchParams.get("priority");
 
@@ -15,11 +22,17 @@ export function GET(request: Request) {
   }
 
   const priority = rawPriority as Priority | null;
-  const todos = listTodos(priority ?? undefined);
+  const todos = listTodos(authUser.id, priority ?? undefined);
   return NextResponse.json({ data: todos });
 }
 
 export async function POST(request: Request) {
+  const authUser = getAuthUserFromRequest(request);
+
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const parsed = createTodoSchema.safeParse(body);
@@ -31,7 +44,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const created = createTodo(parsed.data);
+    const created = createTodo(authUser.id, parsed.data);
     return NextResponse.json({ data: created }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });

@@ -22,6 +22,7 @@ type ToggleResponse = {
 
 type TodoAppProps = {
   initialTodos: Todo[];
+  username: string;
 };
 
 type EditDraft = {
@@ -31,7 +32,7 @@ type EditDraft = {
   recurrencePattern: RecurrencePattern | "none";
 };
 
-export function TodoApp({ initialTodos }: TodoAppProps) {
+export function TodoApp({ initialTodos, username }: TodoAppProps) {
   const [todos, setTodos] = useState<Todo[]>(initialTodos);
   const [error, setError] = useState<string | null>(null);
 
@@ -404,13 +405,33 @@ export function TodoApp({ initialTodos }: TodoAppProps) {
     );
   }
 
+  async function logout() {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      window.location.href = "/login";
+    } catch {
+      setError("Failed to logout. Please try again.");
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 p-6 text-slate-900">
       <main className="mx-auto w-full max-w-4xl rounded-xl bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-bold">Todo Core Features</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          CRUD, priority system, and recurring todos with Singapore timezone display.
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Todo Core Features</h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Signed in as @{username}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void logout()}
+            className="rounded-md border border-slate-300 px-3 py-1 text-sm"
+          >
+            Logout
+          </button>
+        </div>
 
         <section className="mt-6 grid gap-3 rounded-lg border border-slate-200 p-4 md:grid-cols-2">
           <input
